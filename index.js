@@ -91,4 +91,31 @@ function getGithubToken(callback) {
 
 getGithubToken(function(err, res) {
   console.log(`Err: ${err} Res: ${res}`);
-})
+});
+
+function createGitignore(callback) {
+  var filelist = _.without(fs.readdirSync(','), '.git', '.gitignore');
+  if (filelist.length) {
+    inquirer.prompt(
+      [
+        {
+          type: 'checkbox',
+          name: 'ignore',
+          messsage: 'Select the files and/or folders you wish to ignore:',
+          choices: filelist,
+          default: ['node_modules', 'bower_components']
+        }
+      ]
+    ).then(function(answers) {
+      if (answers.ignore.length) {
+        fs.writeFileSync('.gitignore', answers.ignore.join('\n'));
+      } else {
+        touch('.gitignore')
+      }
+      return callback();
+    });
+  } else {
+    touch('.gitignore');
+    return callback();
+  }
+}
