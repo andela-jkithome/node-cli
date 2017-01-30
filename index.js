@@ -172,3 +172,21 @@ function createRepo(callback) {
     );
   });
 }
+
+function setupRepo(url, callback) {
+  var status = new Spinner('Setting up the repository';
+    status.start();
+
+    git
+      .init()
+      .add('.gitignore')
+      .add('./*')
+      .commit('Initial commmit')
+      .addRemote('origin', url)
+      .push('origin', 'master')
+      .then(function() {
+        status.stop();
+        return callback();
+      });
+  )
+}
