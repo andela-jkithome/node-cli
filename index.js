@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var chalk = require('chalk');
 var clear = require('clear');
 var CLI = require('clui');
@@ -89,12 +91,8 @@ function getGithubToken(callback) {
   })
 }
 
-getGithubToken(function(err, res) {
-  console.log(`Err: ${err} Res: ${res}`);
-});
-
 function createGitignore(callback) {
-  var filelist = _.without(fs.readdirSync(','), '.git', '.gitignore');
+  var filelist = _.without(fs.readdirSync('.'), '.git', '.gitignore');
   if (filelist.length) {
     inquirer.prompt(
       [
@@ -126,7 +124,7 @@ function createRepo(callback) {
     {
       type: 'input',
       name: 'name',
-      message: 'Enter a name for hte repository:',
+      message: 'Enter a name for the repository:',
       default: argv._[0] || files.getCurrentDirectoryBase(),
       validate: function(value) {
         if (value.length) {
@@ -140,7 +138,7 @@ function createRepo(callback) {
       type: 'input',
       name: 'description',
       default: argv._[1] || null,
-      mesage: 'Optionally enter a description of the repository:'
+      message: 'Optionally enter a description of the repository:'
     },
     {
       type: 'list',
@@ -174,19 +172,61 @@ function createRepo(callback) {
 }
 
 function setupRepo(url, callback) {
-  var status = new Spinner('Setting up the repository';
-    status.start();
+  var status = new Spinner('Setting up the repository...')
+  status.start();
 
-    git
-      .init()
-      .add('.gitignore')
-      .add('./*')
-      .commit('Initial commmit')
-      .addRemote('origin', url)
-      .push('origin', 'master')
-      .then(function() {
-        status.stop();
-        return callback();
-      });
-  )
+  git
+    .init()
+    .add('.gitignore')
+    .add('./*')
+    .commit('Initial commmit')
+    .addRemote('origin', url)
+    .push('origin', 'master')
+    .then(function() {
+      status.stop();
+      return callback();
+    });
 }
+
+function githubAuth(callback) {
+  getGithubToken(function(err, token) {
+    if(err) {
+      return callback(err);
+    }
+    github.authenticate({
+      type: 'oauth',
+      token: token
+    });
+    return callback(null, token)
+  })
+}
+
+githubAuth(function(err, authed) {
+  if(err) {
+    switch(err.code) {
+      case 401:
+        console.log(chalk.red('Couldn\'t log you in. Please try again.'));
+        break;
+      case 422:
+        console.log(chalk.red('You already have an access token.'));
+        break;
+    }
+  }
+  if(authed) {
+    console.log(chalk.green('Successfully authenticated!'));
+    createRepo(function(err, url) {
+      if(err) {
+        console.log('An error has occured', err);
+      }
+      if(url) {
+        createGitignore(function() {
+          setupRepo(url, function(err) {
+            if(!err) {
+              console.log(chalk.green('All done'));
+            }
+          });
+        });
+      }
+    });
+  }
+});
